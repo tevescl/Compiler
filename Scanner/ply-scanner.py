@@ -37,7 +37,9 @@ reserved = {
     'end': 'END',
     'if': 'IF',
     'then': 'THEN',
-    'while': 'WHILE'
+    'while': 'WHILE',
+    'read': 'READ',  #implemented
+    'write': 'WRITE' #implemented
 }
 
 # all token types
@@ -90,10 +92,21 @@ t_LPAR = r'\('
 t_RPAR = r'\)'
 
 ### add code for inequality, multiplication, division and numbers ###
+t_NEQ = r'!='
+t_MUL = r'\*'
+t_DIV = r'/'
 
+#implemented for numbers 
+def t_NUM (t):
+    r'\d+'
+    t.value = int(t.value)
+    return t
+    
 def t_ID(t):
-    r'[a-z]+'
+    # implemented: modified 
+    r'[a-zA-Z][a-zA-Z0-9]*'
     ### add code for reserved words using the dictionary above ###
+    t.type = reserved.get(t.value,'ID')
     return t
 
 # rule to track line numbers
