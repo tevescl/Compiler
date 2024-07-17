@@ -37,7 +37,9 @@ class Scanner:
         '''Consumes white-space characters in input_string up to the 
            next non-white-space character.
         '''
-        raise Exception('skip_white_space not implemented')
+        # IMPLEMENTED 
+        while self.current_char_index < len(self.input_string) and self.input_string[self.current_char_index].isspace() == True:
+            self.current_char_index += 1
 
     def no_token(self):
         '''Stop execution if the input cannot be matched to a token.'''
@@ -62,8 +64,10 @@ class Scanner:
                 token, longest = t, match.group()
         # consume the token by moving the index to the end of the matched part
         self.current_char_index += len(longest)
+        # IMPLEMENTED 
+        if not longest and self.current_char_index < len(self.input_string):
+            self.no_token()
         return (token, longest)
-
     def lookahead(self):
         '''Returns the next token without consuming it.
            Returns None if there is no next token.
@@ -85,10 +89,22 @@ class Scanner:
            If the token is a number or an identifier, not just the
            token but a pair of the token and its value is returned.
         '''
-        raise Exception('consume not implemented')
+        # IMPLEMENTED 
+        current = self.next_token
+        if current[0] in expected_tokens:
+            self.next_token = self.get_token()
+            if current[0] == 'NUM' or current[0] == 'ID':
+                return current
+            else:
+                return current[0]
+        self.unexpected_token(current[0], expected_tokens)
 
 class Token:
     # The following enumerates all tokens.
+    # IMPLEMENTED 
+    READ = 'READ'
+    WRITE = 'WRITE'
+    # IMPLEMENTED end
     DO    = 'DO'
     ELSE  = 'ELSE'
     END   = 'END'
@@ -123,19 +139,26 @@ class Token:
         (IF,    'if'),
         (THEN,  'then'),
         (WHILE, 'while'),
+        (READ,  'read'),  # implemented
+        (WRITE, 'write'), # implemented
         (SEM,   ';'),
         (BEC,   ':='),
         (LESS,  '<'),
         (EQ,    '='),
+        (NEQ,   '\\!='),  # implemented
         (GRTR,  '>'),
         (LEQ,   '<='),
         (GEQ,   '>='),
         (ADD,   '\\+'), # + is special in regular expressions
         (SUB,   '-'),
+        (MUL,   '\\*'), # implemented
+        (DIV,   '\\/'), # implemented
         (LPAR,  '\\('), # ( is special in regular expressions
         (RPAR,  '\\)'), # ) is special in regular expressions
+        (NUM,   '\d+'), # implemented
         (ID,    '[a-z]+'),
     ]
+
 
 class Symbol_Table:
     '''A symbol table maps identifiers to locations.'''
@@ -362,7 +385,28 @@ class Identifier_AST:
     def code(self):
         loc = symbol_table.location(self.identifier)
         return 'iload ' + str(loc) + '\n'
-
+class If_Else_AST:
+    def __init__(self, condition, then, else_):
+        self.condition = condition
+        self.then = then
+        self.else_ = else_
+    def __repr__(self):
+        return 'if ' + repr(self.condition) + ' then ' + \
+                       repr(self.then) + ' else ' + repr(self.else_) + ' end'
+    def indented(self, level):
+        return indent('If-Else', level) + \
+               self.condition.indented(level+1) + \
+               self.then.indented(level+1) + \
+               self.else_.indented(level+1)
+    def code(self):
+        l1 = label_generator.next()
+        l2 = label_generator.next()
+        return self.condition.false_code(l1) + \
+               self.then.code() + \
+               'goto ' + l2 + '\n' + \
+               l1 + ':\n' + \
+               self.else_.code() + \
+               l2 + ':\n'
 # The following functions comprise the recursive-descent parser.
 
 def program():
@@ -384,6 +428,10 @@ def statement():
         return while_statement()
     elif scanner.lookahead() == Token.ID:
         return assignment()
+    elif scanner.lookahead() == Token.WRITE:
+        return write()
+    elif scanner.lookahead() == Token.READ:
+        return read()
     else: # error
         return scanner.consume(Token.IF, Token.WHILE, Token.ID)
 
@@ -392,6 +440,11 @@ def if_statement():
     condition = comparison()
     scanner.consume(Token.THEN)
     then = statements()
+    if scanner.lookahead() == Token.ELSE:
+        scanner.consume(Token.ELSE)
+        else_ = statements()
+        scanner.consume(Token.END)
+        return If_Else_AST(condition, then, else_)
     scanner.consume(Token.END)
     return If_AST(condition, then)
 
@@ -453,7 +506,17 @@ def factor():
 def identifier():
     value = scanner.consume(Token.ID)[1]
     return Identifier_AST(value)
+    
+def write():
+    scanner.consume(Token.WRITE)
+    expr = expression()
+    return Write_AST(expr)
 
+def read():
+    scanner.consume(Token.READ)
+    id = identifier()
+    return Read_AST(id)
+    
 # Initialise scanner, symbol table and label generator.
 
 scanner = Scanner(sys.stdin)
