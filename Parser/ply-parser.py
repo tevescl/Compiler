@@ -38,7 +38,11 @@ reserved = {
     'end': 'END',
     'if': 'IF',
     'then': 'THEN',
-    'while': 'WHILE'
+    'while': 'WHILE',
+    'write': 'WRITE',
+    'read':  'READ',
+    'true':   'TRUE',
+    'false':  'FALSE'
 }
 
 # all token types
@@ -85,16 +89,22 @@ t_EQ = r'='
 t_GRTR = r'>'
 t_LEQ = r'<='
 t_GEQ = r'>='
+t_NEQ = r'!='
 t_ADD = r'\+'
 t_SUB = r'-'
+t_DIV = r'/'
+t_MUL = r'\*'
 t_LPAR = r'\('
 t_RPAR = r'\)'
+t_NUM = r'[0-9]+'
 
 ### add code for inequality, multiplication, division and numbers ###
 
 def t_ID(t):
     r'[a-z]+'
     ### add code for reserved words using the dictionary above ###
+    if t.value in reserved:
+        t.type = reserved[t.value]
     return t
 
 # rule to track line numbers
@@ -149,6 +159,23 @@ class If_AST:
         return indent('If', level) + \
                self.condition.indented(level+1) + \
                self.then.indented(level+1)
+        
+class If_Else_AST:
+    def __init__(self, condition, then, else_):
+        self.condition = condition
+        self.then = then
+        self.else_ = else_
+
+    def __repr__(self):
+        return 'if-else ' + repr(self.condition) + ' then ' + \
+                            repr(self.then) + ' else ' + \
+                            repr(self.else_) + ' end'
+
+    def indented(self, level):
+        return indent('If-Else', level) + \
+                self.condition.indented(level + 1) + \
+                self.then.indented(level + 1) + \
+                self.else_.indented(level + 1)
 
 class While_AST:
     def __init__(self, condition, body):
@@ -281,12 +308,18 @@ def p_statements_statements(p):
 def p_statement(p):
     '''Statement : If
                  | While
+                 | Write
+                 | Read
                  | Assignment'''
+               
     p[0] = p[1]
 
 def p_if(p):
     'If : IF Comparison THEN Statements END'
     p[0] = If_AST(p[2], p[4])
+def p_if_else(p):
+    'If : IF Comparison THEN Statements ELSE Statements END'
+    p[0]= If_Else_AST(p[2],p[4],p[6])
 
 def p_while(p):
     'While : WHILE Comparison DO Statements END'
@@ -299,6 +332,25 @@ def p_assignment(p):
 def p_comparison(p):
     'Comparison : Expression Relation Expression'
     p[0] = Comparison_AST(p[1], p[2], p[3])
+
+def p_read(p):
+    'Read : READ Id'
+    p[0]= Read_AST(p[2])
+def p_write(p):
+    'Write : WRITE Expression'
+    p[0]= Write_AST(p[2])
+
+def p_condition(p):
+    '''Condition : Comparison
+                 | Boolean'''
+    p[0] = p[1]
+
+def p_boolean(p):
+    '''Boolean : TRUE
+               | FALSE'''
+    
+    p[0] = p[1]
+
 
 def p_relation(p):
     '''Relation : EQ
@@ -342,7 +394,7 @@ scanner = lex.lex()
 # Show all tokens in the input.
 #
 # scanner.input(sys.stdin.read())
-#
+
 # for token in scanner:
 #     if token.type in ['NUM', 'ID']:
 #         print(token.type, token.value)
