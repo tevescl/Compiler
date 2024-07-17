@@ -31,7 +31,9 @@ class Scanner:
         '''Consumes white-space characters in input_string up to the 
            next non-white-space character.
         '''
-        raise Exception('skip_white_space not implemented')
+        # IMPLEMENTED 
+        while self.current_char_index < len(self.input_string) and self.input_string[self.current_char_index].isspace() == True:
+            self.current_char_index += 1
 
     def no_token(self):
         '''Stop execution if the input cannot be matched to a token.'''
@@ -56,8 +58,10 @@ class Scanner:
                 token, longest = t, match.group()
         # consume the token by moving the index to the end of the matched part
         self.current_char_index += len(longest)
+        # IMPLEMENTED 
+        if not longest and self.current_char_index < len(self.input_string):
+            self.no_token()
         return (token, longest)
-
     def lookahead(self):
         '''Returns the next token without consuming it.
            Returns None if there is no next token.
@@ -79,10 +83,22 @@ class Scanner:
            If the token is a number or an identifier, not just the
            token but a pair of the token and its value is returned.
         '''
-        raise Exception('consume not implemented')
+        # IMPLEMENTED 
+        current = self.next_token
+        if current[0] in expected_tokens:
+            self.next_token = self.get_token()
+            if current[0] == 'NUM' or current[0] == 'ID':
+                return current
+            else:
+                return current[0]
+        self.unexpected_token(current[0], expected_tokens)
 
 class Token:
     # The following enumerates all tokens.
+    # IMPLEMENTED 
+    READ = 'READ'
+    WRITE = 'WRITE'
+    # IMPLEMENTED end
     DO    = 'DO'
     ELSE  = 'ELSE'
     END   = 'END'
@@ -117,17 +133,23 @@ class Token:
         (IF,    'if'),
         (THEN,  'then'),
         (WHILE, 'while'),
+        (READ,  'read'),  # implemented
+        (WRITE, 'write'), # implemented
         (SEM,   ';'),
         (BEC,   ':='),
         (LESS,  '<'),
         (EQ,    '='),
+        (NEQ,   '\\!='),  # implemented
         (GRTR,  '>'),
         (LEQ,   '<='),
         (GEQ,   '>='),
         (ADD,   '\\+'), # + is special in regular expressions
         (SUB,   '-'),
+        (MUL,   '\\*'), # implemented
+        (DIV,   '\\/'), # implemented
         (LPAR,  '\\('), # ( is special in regular expressions
         (RPAR,  '\\)'), # ) is special in regular expressions
+        (NUM,   '\d+'), # implemented
         (ID,    '[a-z]+'),
     ]
 
